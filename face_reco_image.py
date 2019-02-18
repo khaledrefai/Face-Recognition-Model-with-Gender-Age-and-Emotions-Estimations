@@ -164,23 +164,26 @@ class FaceImage(object):
         for i, bb in enumerate(face_bbs):
             
             if RECOGNIZE_FACES == True:
-                # Display name 
-                label1 = "{}".format(identities[i])
-                self.draw_label_bottom(img, (bb.left(), bb.bottom()), label1)
-            
-                ## Display age, gender and emotion
+                # Display name
+
+                label12 = "{}".format(identities[i])
+                label1="{}, {}".format(int(predicted_ages[i]),
+                                                 "F" if predicted_genders[i][0] > 0.5 else "M")
+
+                self.draw_label_bottom(img, (bb.left(), bb.bottom()), label1,row_index=2)
+                self.draw_label_bottom(img, (bb.left(), bb.bottom() + 1), label12, row_index=0)
+                ## Display emotion
                 if identities[i] == "Unknown" or "customer" in identities[i]:
-                    label2 = "{}, {}, {}".format(int(predicted_ages[i]),
-                                                 "F" if predicted_genders[i][0] > 0.5 else "M",
-                                                 emotion2_results[i])
-                else:
                     label2 = "{}".format(emotion2_results[i])
+                else:
+                    try:
+                        label2 = "{}".format(emotion2_results[i])
+                    except:
+                        label2 = "{}".format('normal')
                 self.draw_label_bottom(img, (bb.left(), bb.bottom()+1), label2, row_index=1)
             else:
-                ## Display age, gender and emotion 
-                label2 = "{}, {}, {}".format(int(predicted_ages[i]),
-                                             "F" if predicted_genders[i][0] > 0.5 else "M",
-                                             emotion2_results[i])
+                ## Display age, gender and emotion
+                label2 = "{}".format(emotion2_results[i])
                 self.draw_label_bottom(img, (bb.left(), bb.bottom()), label2, row_index=0)
 
         # draw face rectangles
@@ -189,6 +192,69 @@ class FaceImage(object):
             cv2.rectangle(img, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
         return img
+    def detect_face_info(self, file_path):
+        
+        img = cv2.imread(file_path)
+
+        # workaround for CV2 bug
+        img = copy.deepcopy(img)
+        
+        # for face detection
+        detector = dlib.get_frontal_face_detector()
+            
+        input_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img_h, img_w, _ = np.shape(input_img)
+
+
+        # detect faces using dlib detector
+        if RECOGNIZE_FACES == True:
+            face_bbs, identities = self.face_recognizer.identify_image_faces(img)
+        else:
+            face_bbs = detector(input_img, 1)
+        expanded_face_imgs = np.empty((len(face_bbs), self.face_size, self.face_size, 3))
+        emotion2_results = []
+  
+        # Get face images      
+        for i, bb in enumerate(face_bbs):
+            x1, y1, x2, y2, w, h = bb.left(), bb.top(), bb.right() + 1, bb.bottom() + 1, bb.width(), bb.height()
+            expanded_face_imgs[i, :, :, :] = self.get_expanded_face(img, bb)
+            reg_face = self.get_regular_face(img, bb)
+            gray_face = gray_image[y1:y2, x1:x2]
+            
+            try:
+                gray_face = cv2.resize(gray_face, (emotion_target_size))
+            except:
+               continue
+            #reg_face = copy.deepcopy(reg_face)
+            gray_face = preprocess_input(gray_face, True)
+            gray_face = np.expand_dims(gray_face, 0)
+            gray_face = np.expand_dims(gray_face, -1)
+            emotion_prediction = emotion_classifier.predict(gray_face)
+            emotion_probability = np.max(emotion_prediction)
+            emotion_label_arg = np.argmax(emotion_prediction)
+            emotion_text = emotion_labels[emotion_label_arg]
+            emotion2_results.append(emotion_text)
+          #  emotion2_results.append(emotion.emotionof(self.emotion_model, reg_face)[0])
+
+        
+        if len(expanded_face_imgs) > 0:
+            # predict ages and genders of the detected faces
+            results = self.model.predict(expanded_face_imgs)
+            predicted_genders = results[0]
+            ages = np.arange(0, 101).reshape(101, 1)
+            predicted_ages = results[1].dot(ages).flatten()
+            
+        all_faces_info=[]    
+        # draw results
+        for i, bb in enumerate(face_bbs):
+                 face_info = {'Name':identities[i], 'Age':int(predicted_ages[i]),
+                              'Gender':"F" if predicted_genders[i][0] > 0.5 else "M",
+                              'Imotion':emotion2_results[i]}
+                 all_faces_info.append(face_info)
+           
+  
+        return all_faces_info    
 
 
 def display_labeled_image(face, file_path):
@@ -210,3 +276,4 @@ def display_labeled_images(face, dir_path):
 if TEST_FACE_IMAGE:
     face = FaceImage()
     display_labeled_image(face, "sample/sample01.jpg")
+    

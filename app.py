@@ -1,30 +1,45 @@
-from bottle import Bottle, run
+from bottle import hook, route, response, run, post ,request
 from statistics import mode
 import cv2
 from keras.models import load_model
 import numpy as np
 from face_reco_image import FaceImage
-app = Bottle()
+import os
+from os import path, getcwd
+import tempfile
+
+
 USE_SMALL_FRAME =  False
 VISUALIZE_DATASET = False
 process_this_frame = True
 face = FaceImage()
- 
-@route('/postimage', method='POST')
+
+_allow_origin = '*'
+_allow_methods = 'PUT, GET, POST, DELETE, OPTIONS'
+_allow_headers = 'Authorization, Origin, Accept, Content-Type, X-Requested-With'
+
+@hook('after_request')
+def enable_cors():
+    '''Add headers to enable CORS'''
+
+    response.headers['Access-Control-Allow-Origin'] = _allow_origin
+    response.headers['Access-Control-Allow-Methods'] = _allow_methods
+    response.headers['Access-Control-Allow-Headers'] = _allow_headers
+    
+@post('/postimage')
 def postimage():
-    upload     = request.files.get('upload')
-    name, ext = os.path.splitext(upload.filename)
+    file     = request.files.get('upload')
+    filename, ext = os.path.splitext(file.filename)
     if ext not in ('.png','.jpg','.jpeg'):
         return 'File extension not allowed.'
-    if process_this_frame:
-       gray_image = cv2.cvtColor(upload, cv2.COLOR_BGR2GRAY)
-       rgb_image = cv2.cvtColor(upload, cv2.COLOR_BGR2RGB)
-    if USE_SMALL_FRAME:
-      rgb_image = cv2.resize(rgb_image, (0, 0), fx=0.25, fy=0.25)
+    tmp = tempfile.TemporaryDirectory()
+    temp_storage = path.join(tmp.name , file.filename)
 
-    result_img = face.detect_face(rgb_image)
-return  send_file(result_img, mimetype='image/jpg')
+    file.save(temp_storage)
+
+    result_info = face.detect_face_info(temp_storage)
+    return dict(data=result_info)
 
 
 if __name__ == '__main__':
-  run(app, host='localhost', port=8080)
+  run(host='localhost', port=8080, debug=True)

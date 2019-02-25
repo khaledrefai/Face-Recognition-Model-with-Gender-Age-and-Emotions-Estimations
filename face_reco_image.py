@@ -75,7 +75,8 @@ class FaceImage(object):
             print("Loading face recognizer...")
             self.face_recognizer = FaceRecognizer()
             print("Loaded face recognizer")
-
+            
+          
     @classmethod
     def draw_label_top(cls, image, point, label, font=cv2.FONT_HERSHEY_SIMPLEX,
                    font_scale=1, thickness=2, alpha=OVERLAY_ALPHA):
@@ -195,7 +196,7 @@ class FaceImage(object):
     def detect_face_info(self, file_path):
         
         img = cv2.imread(file_path)
-
+        print(img)
         # workaround for CV2 bug
         img = copy.deepcopy(img)
         
@@ -235,6 +236,7 @@ class FaceImage(object):
             emotion_label_arg = np.argmax(emotion_prediction)
             emotion_text = emotion_labels[emotion_label_arg]
             emotion2_results.append(emotion_text)
+            
           #  emotion2_results.append(emotion.emotionof(self.emotion_model, reg_face)[0])
 
         

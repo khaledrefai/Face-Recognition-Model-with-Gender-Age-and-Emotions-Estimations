@@ -1,5 +1,5 @@
 tensorflow==2.5.2
-opencv_python==3.4.0.12
+opencv_python==4.2.0.32
 pandas==0.22.0
 Keras==2.1.6
 scipy==1.1.0

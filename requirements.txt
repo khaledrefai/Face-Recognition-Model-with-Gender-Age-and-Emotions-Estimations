@@ -1,4 +1,4 @@
-tensorflow==2.5.2
+tensorflow==2.6.4
 opencv_python==3.4.0.12
 pandas==0.22.0
 Keras==2.1.6

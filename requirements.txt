@@ -1,7 +1,7 @@
 tensorflow==2.11.1
 opencv_python==3.4.0.12
 pandas==0.22.0
-Keras==2.1.6
+Keras==2.13.1
 scipy==1.1.0
 matplotlib==2.1.2
 imageio==2.3.0
